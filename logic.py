@@ -11,7 +11,7 @@ class DB_Manager:
     def create_tables(self):
         conn = sqlite3.connect(self.database)
         with conn:
-            conn.execute('''CREATE TABLE projects (
+            conn.execute('''CREATE TABLE IF NOT EXISTS projects (
                             project_id INTEGER PRIMARY KEY,
                             user_id INTEGER,
                             project_name TEXT NOT NULL,
@@ -20,17 +20,17 @@ class DB_Manager:
                             status_id INTEGER,
                             FOREIGN KEY(status_id) REFERENCES status(status_id)
                         )''') 
-            conn.execute('''CREATE TABLE skills (
+            conn.execute('''CREATE TABLE IF NOT EXISTS skills (
                             skill_id INTEGER PRIMARY KEY,
                             skill_name TEXT
                         )''')
-            conn.execute('''CREATE TABLE project_skills (
+            conn.execute('''CREATE TABLE IF NOT EXISTS project_skills (
                             project_id INTEGER,
                             skill_id INTEGER,
                             FOREIGN KEY(project_id) REFERENCES projects(project_id),
                             FOREIGN KEY(skill_id) REFERENCES skills(skill_id)
                         )''')
-            conn.execute('''CREATE TABLE status (
+            conn.execute('''CREATE TABLE IF NOT EXISTS status (
                             status_id INTEGER PRIMARY KEY,
                             status_name TEXT
                         )''')
@@ -65,11 +65,15 @@ class DB_Manager:
 
     def insert_skill(self, user_id, project_name, skill):
         sql = 'SELECT project_id FROM projects WHERE project_name = ? AND user_id = ?'
-        project_id = self.__select_data(sql, (project_name, user_id))[0][0]
-        skill_id = self.__select_data('SELECT skill_id FROM skills WHERE skill_name = ?', (skill,))[0][0]
-        data = [(project_id, skill_id)]
-        sql = 'INSERT OR IGNORE INTO project_skills VALUES(?, ?)'
-        self.__executemany(sql, data)
+        proj_res = self.__select_data(sql, (project_name, user_id))
+        skill_res = self.__select_data('SELECT skill_id FROM skills WHERE skill_name = ?', (skill,))
+        
+        if proj_res and skill_res:
+            project_id = proj_res[0][0]
+            skill_id = skill_res[0][0]
+            data = [(project_id, skill_id)]
+            sql = 'INSERT OR IGNORE INTO project_skills VALUES(?, ?)'
+            self.__executemany(sql, data)
 
 
     def get_statuses(self):
@@ -124,26 +128,45 @@ WHERE project_name=? AND user_id=?
         self.__executemany(sql, [(skill_id, project_id)])
 
 
-if __name__ == 'main':
-    manager = DB_Manager(DATABASE)
+# if __name__ == '__main__':
+#     manager = DB_Manager(DATABASE)
 
-    manager.create_tables()
-    manager.default_insert()
-    print('Навыки:')
-    print(manager.get_skills())
-    print('\nСтатусы:')
-    print(manager.get_statuses())
-    manager.add_project(
-    1,
-    'Telegram Bot',
-    'Бот для работы с проектами',
-    'https://example.com',
-    1
-    )
-    print('\nПроекты пользователя:')
-    print(manager.get_projects(1))
-    print('\nПроект:')
-    print(manager.get_project(1))
-    manager.add_project_skill(1, 1)
-    print('\nНавыки проекта:')
-    print(manager.get_project_skills(1))
+#     manager.create_tables()
+#     manager.default_insert()
+
+#     all_projects = [
+#         (
+#             871827812,
+#             'БД Портфолио проектов',
+#             'База данных SQLite и класс DB_Manager для хранения сведений о проектах',
+#             'https://github.com/SanzuHaru2007/portfolio',
+#             3
+#         ),
+#         (
+#             871827812,
+#             'Эхо-бот с фактами и ООП',
+#             'Асинхронный Telegram-бот: факты об экологии, работа с ООП (класс Apple), обработка фото и эхо-ответы',
+#             'https://github.com/SanzuHaru2007/echo_facts_bot/tree/main',
+#             3
+#         ),
+#         (
+#             871827812,
+#             'Pokemons',
+#             'можно завести собственного покемона',
+#             'https://github.com/SanzuHaru2007/pokemon',
+#             1
+#         )
+#     ]
+
+#     # manager.insert_project(all_projects)
+
+#     # manager.insert_skill(871827812, 'БД Портфолио проектов', 'Python')
+#     # manager.insert_skill(871827812, 'БД Портфолио проектов', 'SQL')
+
+#     # manager.insert_skill(871827812, 'Эхо-бот с фактами и ООП', 'Python')
+#     # manager.insert_skill(871827812, 'Эхо-бот с фактами и ООП', 'Telegram')
+
+#     # manager.insert_skill(871827812, 'Pokemons', 'Python')
+
+#     print('Все проекты пользователя:')
+#     print(manager.get_projects(871827812))
